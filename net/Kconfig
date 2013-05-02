@@ -345,14 +345,13 @@ config COMPAT_WIRELESS
 
 config COMPAT_WIRELESS_MODULES
 	tristate "COMPAT WIRELESS Module"
-	depends on COMPAT_WIRELESS
 	default n
 	---help---
 	As a module choose m
 
 source "net/compat-drivers/net/wireless/Kconfig"
 source "net/compat-drivers/net/mac80211/Kconfig"
-source "net/compat-drivers/drivers/net/wireless/ti/Kconfig" 
+source "net/compat-drivers/drivers/net/wireless/ti/Kconfig"
 
 #source "net/wireless/Kconfig"
 #source "net/mac80211/Kconfig"
