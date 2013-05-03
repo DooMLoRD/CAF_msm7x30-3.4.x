@@ -484,11 +484,6 @@ struct cyttsp_platform_data {
 	u8 num_regulators;
 	const char *fw_fname;
 	bool disable_ghost_det;
-#ifdef CY_USE_I2C_DRIVER
-	s32 (*init)(struct i2c_client *client);
-	s32 (*resume)(struct i2c_client *client);
-	s32 (*suspend)(struct i2c_client *client);
-#endif
 #ifdef CY_USE_SPI_DRIVER
 	s32 (*init)(struct spi_device *spi);
 	s32 (*resume)(struct spi_device *spi);
