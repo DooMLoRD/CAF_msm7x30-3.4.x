@@ -306,6 +306,7 @@ obj-$(CONFIG_MACH_LGE) += lge/
 
 obj-$(CONFIG_MACH_SEMC_URUSHI) += board-semc_mogami.o board-semc_mogami-wifi.o board-semc_mogami-rfkill.o semc_urushi.o vibrator-mogami.o
 obj-$(CONFIG_MACH_SEMC_ANZU) += board-semc_mogami.o board-semc_mogami-rfkill.o keypad-anzu.o leds-anzu.o  vibrator-mogami.o gpio-anzu.o charger-anzu.o board-semc_mogami-wifi.o
+obj-$(CONFIG_MACH_SEMC_IYOKAN) += board-semc_mogami.o leds-iyokan.o touch-iyokan.o vibrator-mogami.o charger-iyokan.o board-semc_mogami-wifi.o gpio-iyokan.o keypad-iyokan.o board-semc_mogami-rfkill.o
 
 CFLAGS_msm_vibrator.o += -Idrivers/staging/android
 CFLAGS_board-9615.o += -Idrivers/usb/gadget

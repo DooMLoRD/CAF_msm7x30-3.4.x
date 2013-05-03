@@ -162,6 +162,7 @@ config TOUCHSCREEN_CY8CTMG110
 
 config TOUCHSCREEN_CYTTSP_CORE
 	tristate "Cypress TTSP touchscreen"
+	default y
 	help
 	  Say Y here if you have a touchscreen using controller from
 	  the Cypress TrueTouch(tm) Standard Product family connected
@@ -175,6 +176,7 @@ config TOUCHSCREEN_CYTTSP_CORE
 
 config TOUCHSCREEN_CYTTSP_I2C
 	tristate "support I2C bus connection"
+	default n
 	depends on TOUCHSCREEN_CYTTSP_CORE && I2C
 	help
 	  Say Y here if the touchscreen is connected via I2C bus.
@@ -184,6 +186,7 @@ config TOUCHSCREEN_CYTTSP_I2C
 
 config TOUCHSCREEN_CYTTSP_SPI
 	tristate "support SPI bus connection"
+	default y
 	depends on TOUCHSCREEN_CYTTSP_CORE && SPI_MASTER
 	help
 	  Say Y here if the touchscreen is connected via SPI bus.
@@ -1030,39 +1033,6 @@ config CY8CTMA300_SPI_WIDTH_MAJOR
 	help
 	  The device doesn't have actual tool width.
 	  This pseudo value is used to report ABS_MT_WIDTH_MAJOR.
-
-config TOUCHSCREEN_CYTTSP_I2C
-	default n
-	tristate "Cypress TTSP i2c touchscreen"
-	depends on I2C
-	help
-	  Say Y here if you have a Cypress TTSP touchscreen
-	  connected to your system's i2c bus.
-
-	  If unsure, say N.
-
-	  To compile this driver as a module, choose M here: the
-	  module will be called cyttsp_i2c.
-
-config TOUCHSCREEN_CYTTSP_SPI
-	default n
-	tristate "Cypress TTSP spi touchscreen"
-	depends on SPI_MASTER
-	help
-	  Say Y here if you have a Cypress TTSP touchscreen
-	  connected to your system's spi bus.
-
-	  If unsure, say N.
-
-	  To compile this driver as a module, choose M here: the
-	  module will be called cyttsp_spi.
-
-config TOUCHSCREEN_CYTTSP_CORE
-	default y
-	bool "Cypress TTSP touchscreen core"
-	depends on TOUCHSCREEN_CYTTSP_I2C || TOUCHSCREEN_CYTTSP_SPI
-	help
-	  Always activated for Cypress TTSP touchscreen
 
 config TOUCHSCREEN_CYTTSP_MAX_X
 	default 479
