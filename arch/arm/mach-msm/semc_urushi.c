@@ -1,4 +1,4 @@
-/* /kernel/arch/arm/mach-msm/charger-urushi.c
+/* /kernel/arch/arm/mach-msm/semc_urushi.c
  *
  * Copyright (C) [2010] Sony Ericsson Mobile Communications AB.
  *
