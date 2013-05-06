@@ -7083,7 +7083,7 @@ static void __init msm7x30_fixup(struct machine_desc *desc, struct tag *tags,
 }
 
 MACHINE_START(SEMC_ZEUS, "zeus")
-	.boot_params = PLAT_PHYS_OFFSET + 0x100,
+	.atag_offset = PLAT_PHYS_OFFSET + 0x100,
 	.map_io = msm7x30_map_io,
 	.reserve = msm7x30_reserve,
 	.init_irq = msm7x30_init_irq,
