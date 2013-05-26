@@ -21,11 +21,24 @@
 #include <linux/types.h>
 #include <linux/input.h>
 #include <linux/usb.h>
+#if defined(CONFIG_MACH_SEMC_ZEUS) || defined(CONFIG_MACH_SEMC_PHOENIX)
+#include <linux/leds.h>
+#endif /* CONFIG_MACH_SEMC_ZEUS */
 #include <linux/leds-pmic8058.h>
 #include <linux/clkdev.h>
 #include <linux/of_platform.h>
 #include <linux/msm_ssbi.h>
 #include <mach/msm_bus.h>
+
+/* platform device data structures */
+struct msm_acpu_clock_platform_data {
+	uint32_t acpu_switch_time_us;
+	uint32_t max_speed_delta_khz;
+	uint32_t vdd_switch_time_us;
+	unsigned int max_axi_khz;
+	unsigned int max_vdd;
+	int (*acpu_set_vdd) (int mvolts);
+};
 
 struct msm_camera_io_ext {
 	uint32_t mdcphy;
@@ -109,7 +122,11 @@ struct msm_camera_sensor_pwr {
 #define MSM_CAMERA_FLASH_SRC_PWM  (0x00000001<<1)
 #define MSM_CAMERA_FLASH_SRC_CURRENT_DRIVER	(0x00000001<<2)
 #define MSM_CAMERA_FLASH_SRC_EXT     (0x00000001<<3)
+#if defined(CONFIG_MACH_SEMC_ZEUS) || defined(CONFIG_MACH_SEMC_PHOENIX)
+#define MSM_CAMERA_FLASH_SRC_LED  (0x00000001<<2)
+#else
 #define MSM_CAMERA_FLASH_SRC_LED (0x00000001<<3)
+#endif /* CONFIG_MACH_SEMC_ZEUS */
 #define MSM_CAMERA_FLASH_SRC_LED1 (0x00000001<<4)
 
 struct msm_camera_sensor_flash_pmic {
@@ -164,6 +181,9 @@ struct msm_camera_sensor_flash_src {
 		struct msm_camera_sensor_flash_external
 			ext_driver_src;
 		struct msm_camera_sensor_flash_led led_src;
+#if defined(CONFIG_MACH_SEMC_ZEUS) || defined(CONFIG_MACH_SEMC_PHOENIX)
+		struct gpio_led_platform_data *gpio_led_src;
+#endif /* CONFIG_MACH_SEMC_ZEUS */
 	} _fsrc;
 };
 
@@ -611,6 +631,7 @@ void msm_map_8974_io(void);
 void msm_map_msm8625_io(void);
 void msm_map_msm9625_io(void);
 void msm_init_irq(void);
+void __init msm_acpu_clock_init(struct msm_acpu_clock_platform_data *);
 void msm_8974_init_irq(void);
 void vic_handle_irq(struct pt_regs *regs);
 void msm_8974_reserve(void);
@@ -619,7 +640,6 @@ void msm_8974_init_gpiomux(void);
 void msm9625_init_gpiomux(void);
 void msm_map_mpq8092_io(void);
 void mpq8092_init_gpiomux(void);
-
 struct mmc_platform_data;
 int msm_add_sdcc(unsigned int controller,
 		struct mmc_platform_data *plat);
