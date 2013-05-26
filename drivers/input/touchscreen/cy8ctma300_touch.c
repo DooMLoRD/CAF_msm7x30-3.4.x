@@ -44,6 +44,7 @@
 #include <asm/irq.h>
 #include <linux/uaccess.h>
 #include <linux/mutex.h>
+#include <linux/module.h>
 
 #ifdef MEASURE_PERFORMANCE
 #include <linux/jiffies.h>
@@ -1001,7 +1002,7 @@ static int cy8ctma300_touch_release(struct inode *inode, struct file *file)
 	return 0;
 };
 
-static ssize_t cy8ctma300_touch_ioctl(struct inode *inode, struct file *file,
+static long cy8ctma300_touch_ioctl(struct file *file,
 	unsigned int cmd, unsigned long arg)
 {
 	int err = 0;
@@ -1103,7 +1104,7 @@ static void charger_noise_suppression(struct cy8ctma300_touch *this,
 static const struct file_operations cy8ctma300_touch_fops = {
 	.owner   = THIS_MODULE,
 	.open    = cy8ctma300_touch_open,
-	.ioctl   = cy8ctma300_touch_ioctl,
+	.unlocked_ioctl   = cy8ctma300_touch_ioctl,
 	.release = cy8ctma300_touch_release,
 };
 
