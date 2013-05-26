@@ -109,9 +109,10 @@ extern void led_blink_set(struct led_classdev *led_cdev,
  * software blink timer that implements blinking when the
  * hardware doesn't.
  */
+/*
 extern void led_brightness_set(struct led_classdev *led_cdev,
 			       enum led_brightness brightness);
-
+*/
 /*
  * LED Triggers
  */
