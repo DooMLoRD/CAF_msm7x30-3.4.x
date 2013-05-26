@@ -90,6 +90,7 @@
 #include "smd_private.h"
 #include <linux/bma150.h>
 
+#include <linux/spi/cypress_touch.h>
 #include "board-msm7x30-regulator.h"
 #include "pm.h"
 
@@ -391,132 +392,9 @@ static struct attribute_group tma300_properties_attr_group = {
 };
 
 static struct kobject *properties_kobj;
-static struct regulator_bulk_data cyttsp_regs[] = {
-	{ .supply = "ldo8",  .min_uV = 1800000, .max_uV = 1800000 },
-	{ .supply = "ldo15", .min_uV = 3050000, .max_uV = 3100000 },
-};
+
 
 #define CYTTSP_TS_GPIO_IRQ	150
-static int cyttsp_platform_init(struct i2c_client *client)
-{
-	int rc = -EINVAL;
-
-	rc = regulator_bulk_get(NULL, ARRAY_SIZE(cyttsp_regs), cyttsp_regs);
-
-	if (rc) {
-		pr_err("%s: could not get regulators: %d\n", __func__, rc);
-		goto out;
-	}
-
-	rc = regulator_bulk_set_voltage(ARRAY_SIZE(cyttsp_regs), cyttsp_regs);
-
-	if (rc) {
-		pr_err("%s: could not set regulator voltages: %d\n", __func__,
-				rc);
-		goto regs_free;
-	}
-
-	rc = regulator_bulk_enable(ARRAY_SIZE(cyttsp_regs), cyttsp_regs);
-
-	if (rc) {
-		pr_err("%s: could not enable regulators: %d\n", __func__, rc);
-		goto regs_free;
-	}
-
-	/* check this device active by reading first byte/register */
-	rc = i2c_smbus_read_byte_data(client, 0x01);
-	if (rc < 0) {
-		pr_err("%s: i2c sanity check failed\n", __func__);
-		goto regs_disable;
-	}
-
-	rc = gpio_tlmm_config(GPIO_CFG(CYTTSP_TS_GPIO_IRQ, 0, GPIO_CFG_INPUT,
-					GPIO_CFG_PULL_UP, GPIO_CFG_6MA), GPIO_CFG_ENABLE);
-	if (rc) {
-		pr_err("%s: Could not configure gpio %d\n",
-					 __func__, CYTTSP_TS_GPIO_IRQ);
-		goto regs_disable;
-	}
-
-	/* virtual keys */
-	tma300_vkeys_attr.attr.name = "virtualkeys.cyttsp-i2c";
-	properties_kobj = kobject_create_and_add("board_properties",
-				NULL);
-	if (properties_kobj)
-		rc = sysfs_create_group(properties_kobj,
-			&tma300_properties_attr_group);
-	if (!properties_kobj || rc)
-		pr_err("%s: failed to create board_properties\n",
-				__func__);
-
-	return CY_OK;
-
-regs_disable:
-	regulator_bulk_disable(ARRAY_SIZE(cyttsp_regs), cyttsp_regs);
-regs_free:
-	regulator_bulk_free(ARRAY_SIZE(cyttsp_regs), cyttsp_regs);
-out:
-	return rc;
-}
-
-/* TODO: Put the regulator to LPM / HPM in suspend/resume*/
-static int cyttsp_platform_suspend(struct i2c_client *client)
-{
-	msleep(20);
-
-	return CY_OK;
-}
-
-static int cyttsp_platform_resume(struct i2c_client *client)
-{
-	/* add any special code to strobe a wakeup pin or chip reset */
-	mdelay(10);
-
-	return CY_OK;
-}
-
-static struct cyttsp_platform_data cyttsp_data = {
-	.fw_fname = "cyttsp_7630_fluid.hex",
-	.panel_maxx = 479,
-	.panel_maxy = 799,
-	.disp_maxx = 469,
-	.disp_maxy = 799,
-	.disp_minx = 10,
-	.disp_miny = 0,
-	.flags = 0,
-	.gen = CY_GEN3,	/* or */
-	.use_st = CY_USE_ST,
-	.use_mt = CY_USE_MT,
-	.use_hndshk = CY_SEND_HNDSHK,
-	.use_trk_id = CY_USE_TRACKING_ID,
-	.use_sleep = CY_USE_DEEP_SLEEP_SEL | CY_USE_LOW_POWER_SEL,
-	.use_gestures = CY_USE_GESTURES,
-	/* activate up to 4 groups
-	 * and set active distance
-	 */
-	.gest_set = CY_GEST_GRP1 | CY_GEST_GRP2 |
-				CY_GEST_GRP3 | CY_GEST_GRP4 |
-				CY_ACT_DIST,
-	/* change act_intrvl to customize the Active power state
-	 * scanning/processing refresh interval for Operating mode
-	 */
-	.act_intrvl = CY_ACT_INTRVL_DFLT,
-	/* change tch_tmout to customize the touch timeout for the
-	 * Active power state for Operating mode
-	 */
-	.tch_tmout = CY_TCH_TMOUT_DFLT,
-	/* change lp_intrvl to customize the Low Power power state
-	 * scanning/processing refresh interval for Operating mode
-	 */
-	.lp_intrvl = CY_LP_INTRVL_DFLT,
-	.resume = cyttsp_platform_resume,
-	.suspend = cyttsp_platform_suspend,
-	.init = cyttsp_platform_init,
-	.sleep_gpio = -1,
-	.resout_gpio = -1,
-	.irq_gpio = CYTTSP_TS_GPIO_IRQ,
-	.correct_fw_ver = 2,
-};
 
 static int pm8058_pwm_config(struct pwm_device *pwm, int ch, int on)
 {
@@ -864,16 +742,6 @@ static struct msm_ssbi_platform_data msm7x30_ssbi_pm8058_pdata = {
 	},
 };
 #endif
-
-static struct i2c_board_info cy8info[] __initdata = {
-	{
-		I2C_BOARD_INFO(CY_I2C_NAME, 0x24),
-		.platform_data = &cyttsp_data,
-#ifndef CY_USE_TIMER
-		.irq = MSM_GPIO_TO_INT(CYTTSP_TS_GPIO_IRQ),
-#endif /* CY_USE_TIMER */
-	},
-};
 
 static struct i2c_board_info msm_camera_boardinfo[] __initdata = {
 #ifdef CONFIG_MT9D112
@@ -4350,21 +4218,10 @@ static struct mddi_platform_data mddi_pdata = {
 	.mddi_client_power = msm_fb_mddi_client_power,
 };
 
-int mdp_core_clk_rate_table[] = {
-	122880000,
-	122880000,
-	192000000,
-	192000000,
-};
-
 static struct msm_panel_common_pdata mdp_pdata = {
 	.hw_revision_addr = 0xac001270,
 	.gpio = 30,
-	.mdp_core_clk_rate = 122880000,
-	.mdp_core_clk_table = mdp_core_clk_rate_table,
-	.num_mdp_clk = ARRAY_SIZE(mdp_core_clk_rate_table),
-	.mdp_rev = MDP_REV_40,
-	.mem_hid = MEMTYPE_EBI0,
+	.mdp_max_clk = 122880000,
 };
 
 static int lcd_panel_spi_gpio_num[] = {
@@ -5416,6 +5273,11 @@ static struct msm_i2c_ssbi_platform_data msm_i2c_ssbi7_pdata = {
 };
 #endif
 
+static struct msm_acpu_clock_platform_data msm7x30_clock_data = {
+	.acpu_switch_time_us = 50,
+	.vdd_switch_time_us = 62,
+};
+
 static void __init msm7x30_init_irq(void)
 {
 	msm_init_irq();
@@ -6076,22 +5938,6 @@ static struct mmc_platform_data msm7x30_sdc1_data = {
 #endif
 #endif
 
-#ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
-static struct mmc_platform_data msm7x30_sdc2_data = {
-	.ocr_mask	= MMC_VDD_165_195 | MMC_VDD_27_28,
-	.translate_vdd	= msm_sdcc_setup_power,
-#ifdef CONFIG_MMC_MSM_SDC2_8_BIT_SUPPORT
-	.mmc_bus_width  = MMC_CAP_8_BIT_DATA,
-#else
-	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
-#endif
-	.msmsdcc_fmin	= 144000,
-	.msmsdcc_fmid	= 24576000,
-	.msmsdcc_fmax	= 49152000,
-	.nonremovable	= 1,
-};
-#endif
-
 #ifdef CONFIG_MMC_MSM_SDC3_SUPPORT
 static struct mmc_platform_data msm7x30_sdc3_data = {
 	.ocr_mask	= MMC_VDD_27_28 | MMC_VDD_28_29,
@@ -6171,7 +6017,7 @@ out:
 	return rc;
 }
 #endif
-
+/*
 static int mmc_regulator_init(int sdcc_no, const char *supply, int uV)
 {
 	int rc;
@@ -6205,61 +6051,14 @@ out:
 	sdcc_vreg_data[sdcc_no] = NULL;
 	return rc;
 }
+*/
 
 static void __init msm7x30_init_mmc(void)
 {
-#ifdef CONFIG_MMC_MSM_SDC1_SUPPORT
-	if (mmc_regulator_init(1, "s3", 1800000))
-		goto out1;
-	msm7x30_sdc1_data.swfi_latency = msm7x30_power_collapse_latency(
-		MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT);
-
-	if (machine_is_msm7x30_fluid()) {
-		msm7x30_sdc1_data.ocr_mask =  MMC_VDD_27_28 | MMC_VDD_28_29;
-		if (msm_sdc1_lvlshft_enable()) {
-			pr_err("%s: could not enable level shift\n");
-			goto out1;
-		}
-	}
-
-	msm_add_sdcc(1, &msm7x30_sdc1_data);
-out1:
-#endif
-#ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
-	if (mmc_regulator_init(2, "s3", 1800000))
-		goto out2;
-	msm7x30_sdc2_data.swfi_latency = msm7x30_power_collapse_latency(
-		MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT);
-
-	if (machine_is_msm8x55_svlte_surf())
-		msm7x30_sdc2_data.msmsdcc_fmax =  24576000;
-	if (machine_is_msm8x55_svlte_surf() ||
-			machine_is_msm8x55_svlte_ffa()) {
-		msm7x30_sdc2_data.sdiowakeup_irq = MSM_GPIO_TO_INT(68);
-		msm7x30_sdc2_data.is_sdio_al_client = 1;
-	}
-
-	msm_add_sdcc(2, &msm7x30_sdc2_data);
-out2:
-#endif
-#ifdef CONFIG_MMC_MSM_SDC3_SUPPORT
-	if (mmc_regulator_init(3, "s3", 1800000))
-		goto out3;
-	msm7x30_sdc3_data.swfi_latency = msm7x30_power_collapse_latency(
-		MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT);
 
 	msm_sdcc_setup_gpio(3, 1);
 	msm_add_sdcc(3, &msm7x30_sdc3_data);
-out3:
-#endif
-#ifdef CONFIG_MMC_MSM_SDC4_SUPPORT
-	if (mmc_regulator_init(4, "mmc", 2850000))
-		return;
-	msm7x30_sdc4_data.swfi_latency = msm7x30_power_collapse_latency(
-		MSM_PM_SLEEP_MODE_RAMP_DOWN_AND_WAIT_FOR_INTERRUPT);
-
 	msm_add_sdcc(4, &msm7x30_sdc4_data);
-#endif
 
 }
 
@@ -6335,7 +6134,7 @@ static void __init pmic8058_leds_init(void)
 }
 
 static struct msm_spm_platform_data msm_spm_data __initdata = {
-	.reg_base_addr = MSM_SAW_BASE,
+	.reg_base_addr = IOMEM(0xF0008000),
 
 	.reg_init_values[MSM_SPM_REG_SAW_CFG] = 0x05,
 	.reg_init_values[MSM_SPM_REG_SAW_SPM_CTL] = 0x18,
@@ -6772,7 +6571,7 @@ static void __init msm7x30_init(void)
 	msm7x30_init_uart3();
 #endif
 	msm_spm_init(&msm_spm_data, 1);
-	acpuclk_init(&acpuclk_7x30_soc_data);
+	msm_acpu_clock_init(&msm7x30_clock_data);
 	if (machine_is_msm7x30_surf() || machine_is_msm7x30_fluid())
 		msm7x30_cfg_smsc911x();
 
@@ -6855,7 +6654,7 @@ static void __init msm7x30_init(void)
 
 	if (!machine_is_msm8x55_svlte_ffa() && !machine_is_msm7x30_fluid())
 		marimba_pdata.tsadc = &marimba_tsadc_pdata;
-
+/*
 	if (machine_is_msm7x30_fluid())
 		i2c_register_board_info(0, cy8info,
 					ARRAY_SIZE(cy8info));
@@ -6864,6 +6663,7 @@ static void __init msm7x30_init(void)
 		i2c_register_board_info(0, bma150_board_info,
 					ARRAY_SIZE(bma150_board_info));
 #endif
+*/
 
 	i2c_register_board_info(2, msm_marimba_board_info,
 			ARRAY_SIZE(msm_marimba_board_info));
@@ -7070,7 +6870,7 @@ static void __init msm7x30_init_early(void)
 	msm7x30_allocate_memory_regions();
 }
 
-static void __init msm7x30_fixup(struct machine_desc *desc, struct tag *tags,
+static void __init msm7x30_fixup(struct tag *tags,
 				 char **cmdline, struct meminfo *mi)
 {
 	mi->nr_banks = 3;
